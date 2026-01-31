@@ -1,0 +1,454 @@
+---
+title: "respostas_ex04_21202510146_dias"
+author: "Debora Rodrigues Pereira Dias"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Carregar pacotes necessários
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(readr)
+library(scales)
+```
+
+## R Markdown
+
+# ============================================================
+# Exercício 1 - Probabilidade como frequência de longo prazo
+# ============================================================
+
+```{r}
+# Probabilidade de sair "cara"
+p_cara <- 0.3 
+
+# Tamanhos de amostra
+n_vec <- c(1, 10, 100, 1000, 10000) 
+
+# Data frame para armazenar resultados
+result <- data.frame(
+  n = n_vec,
+  p_cara_obs = NA_real_
+)
+
+# Loop para simular lançamentos
+for (i in seq_along(n_vec)) {
+  # Simulação de n lançamentos
+  lancamentos <- rbinom(n_vec[i], size = 1, prob = p_cara)
+  
+  # Proporção de caras observada
+  result$p_cara_obs[i] <- mean(lancamentos)
+}
+
+# Visualizar resultados
+print(result)
+
+# Gráfico da proporção observada vs número de lançamentos
+plot(result$n, result$p_cara_obs, type = "b",
+     xlab = "Número de lançamentos",
+     ylab = "Proporção de caras observada",
+     main = "Simulação de moeda viesada (p=0.3)")
+abline(h = p_cara, lty = 2, col = "red") # Linha da probabilidade teórica
+```
+Interpretação:  
+À medida que o número de lançamentos aumenta, a proporção observada de caras se aproxima da probabilidade teórica de 0,3.
+Isso ilustra o conceito de frequência relativa e a Lei dos Grandes Números: quanto maior a amostra, mais próximo o resultado fica da probabilidade verdadeira.
+
+# ============================================================
+# Exercício 2 - Bernoulli, Binomial e probabilidades exatas
+# ============================================================
+
+```{r}
+set.seed(123)
+
+# Parâmetros
+p <- 0.65   # probabilidade de satisfação
+n <- 20     # tamanho da amostra
+
+# (1) Simulação de uma amostra Bernoulli
+y <- rbinom(n, size = 1, prob = p)
+
+# (2) Contar o número de satisfeitos
+num_satisfeitos <- sum(y)
+num_satisfeitos
+
+# (3a) Probabilidade de observar exatamente 12 satisfeitos
+prob_12 <- dbinom(12, size = n, prob = p)
+
+# (3b) Probabilidade de observar pelo menos 12 satisfeitos
+prob_12_ou_mais <- 1 - pbinom(11, size = n, prob = p)
+
+# Resultados
+cat("Número de satisfeitos na amostra:", num_satisfeitos, "\n")
+cat("P(S = 12):", prob_12, "\n")
+cat("P(S >= 12):", prob_12_ou_mais, "\n")
+```
+Interpretação:  
+Na amostra simulada de 20 usuários, 12 relataram satisfação.
+
+A probabilidade de observar exatamente 12 satisfeitos é aproximadamente 16%.
+
+A probabilidade de observar pelo menos 12 satisfeitos é aproximadamente 76%.
+
+Isso mostra que, em uma população com 65% de satisfação, é bastante comum que amostras pequenas reflitam essa maioria.
+Em termos de políticas públicas, indica que a satisfação tende a aparecer de forma consistente mesmo em amostras reduzidas.
+
+# ============================================================
+# Exercício 3 - Probabilidade condicional e independência
+# ============================================================
+
+```{r}
+set.seed(123)
+N <- 5000
+
+# (1) Gerar base sintética de saúde
+dados_saude <- data.frame(
+  sexo       = sample(c("F", "M"), size = N, replace = TRUE, prob = c(0.55, 0.45)),
+  fumante    = rbinom(N, 1, 0.22),
+  hipertenso = rbinom(N, 1, 0.30)
+)
+
+# (2) Estimar probabilidades
+P_fumante   <- mean(dados_saude$fumante == 1)
+P_fumante_F <- mean(dados_saude$fumante[dados_saude$sexo == "F"] == 1)
+P_fumante_M <- mean(dados_saude$fumante[dados_saude$sexo == "M"] == 1)
+
+cat("P(fumante = 1):", P_fumante, "\n")
+cat("P(fumante = 1 | sexo = F):", P_fumante_F, "\n")
+cat("P(fumante = 1 | sexo = M):", P_fumante_M, "\n")
+
+# (3) Gráfico de barras da proporção de fumantes por sexo
+tab_fumo <- dados_saude |>
+  dplyr::group_by(sexo) |>
+  dplyr::summarise(prop_fumante = mean(fumante))
+
+ggplot(tab_fumo, aes(x = sexo, y = prop_fumante)) +
+  geom_col(fill = "steelblue") +
+  labs(title = "Proporção de fumantes por sexo",
+       x = "Sexo", y = "Proporção de fumantes") +
+  theme_minimal()
+```
+
+Interpretação:  
+A proporção geral de fumantes é aproximadamente 21,1%.
+
+Entre mulheres (F), a proporção é 21,8%.
+
+Entre homens (M), a proporção é 20,3%.
+
+Como as diferenças são pequenas, podemos considerar que fumar é aproximadamente independente do sexo nesta base simulada.
+O gráfico reforça essa conclusão, mostrando proporções similares entre os grupos.
+
+# ============================================================
+# Exercício 4 - Probabilidade conjunta e regra do produto
+# ============================================================
+
+```{r}
+# (1) Probabilidades marginais e conjunta
+P_hipertenso <- mean(dados_saude$hipertenso == 1)
+P_fumante    <- mean(dados_saude$fumante == 1)
+P_hip_e_fum  <- mean(dados_saude$hipertenso == 1 & dados_saude$fumante == 1)
+
+# (2) Probabilidade condicional
+P_hip_dado_fum <- mean(dados_saude$hipertenso[dados_saude$fumante == 1] == 1)
+
+# (3) Regra do produto
+P_produto <- P_hip_dado_fum * P_fumante
+
+# Resultados
+cat("P(hipertenso = 1):", P_hipertenso, "\n")
+cat("P(fumante = 1):", P_fumante, "\n")
+cat("P(hipertenso = 1 & fumante = 1):", P_hip_e_fum, "\n")
+cat("P(hipertenso = 1 | fumante = 1):", P_hip_dado_fum, "\n")
+cat("Regra do produto:", P_produto, "\n")
+```
+Interpretação:
+
+A probabilidade geral de ser hipertenso é aproximadamente 30%.
+
+Entre os fumantes, essa probabilidade sobe levemente para 31%.
+
+A probabilidade conjunta de ser fumante e hipertenso é cerca de 6,6%, valor praticamente igual ao obtido pela regra do produto.
+
+Isso indica que, nesta base simulada, fumar não altera muito a chance de ser hipertenso — ou seja, há pouca evidência de associação forte entre as variáveis.
+
+# ============================================================
+# Exercício 5 - Bayes "de bolso" em triagem de benefícios
+# ============================================================
+
+```{r}
+set.seed(123)
+
+# Parâmetros
+P_F         <- 0.02   # prevalência de fraude
+P_T_dado_F  <- 0.9    # sensibilidade
+P_T_dado_Fc <- 0.05   # 1 - especificidade
+P_Fc        <- 1 - P_F
+
+# (1) Cálculo analítico de P(F|Alerta) usando Bayes
+P_F_dado_T <- (P_T_dado_F * P_F) /
+  (P_T_dado_F * P_F + P_T_dado_Fc * P_Fc)
+
+cat("Probabilidade analítica P(F|Alerta):", P_F_dado_T, "\n")
+
+# (2) Simulação com N = 100.000 beneficiários
+N <- 100000
+fraude <- rbinom(N, 1, P_F)
+alerta <- ifelse(
+  fraude == 1,
+  rbinom(N, 1, P_T_dado_F),
+  rbinom(N, 1, P_T_dado_Fc)
+)
+
+# (3) Estimar empiricamente P(F|Alerta)
+P_empirico <- mean(fraude[alerta == 1] == 1)
+
+cat("Probabilidade empírica P(F|Alerta):", P_empirico, "\n")
+```
+Interpretação:  
+Dado um alerta, a probabilidade de realmente ser fraude é aproximadamente 27%.
+A simulação confirma esse valor, mostrando consistência com o cálculo analítico.
+Isso significa que a maioria dos alertas (~73%) são falsos positivos.
+
+Em termos de políticas públicas, o sistema ajuda a identificar fraudes, mas gera muitos alertas indevidos, o que pode sobrecarregar a fiscalização e exigir estratégias adicionais para priorizar casos.
+
+# ============================================================
+# Exercício 6 - Teorema Central do Limite com renda
+# ============================================================
+
+```{r}
+set.seed(123)
+N <- 100000
+
+# (1) População com renda assimétrica (distribuição Gamma)
+renda_pop <- rgamma(N, shape = 2, rate = 1/2500)
+
+# (2) Função auxiliar para simular médias
+simular_medias <- function(n, n_rep = 5000) {
+  medias <- numeric(n_rep)
+  for (i in seq_len(n_rep)) {
+    amostra <- sample(renda_pop, n, replace = TRUE)
+    medias[i] <- mean(amostra)
+  }
+  medias
+}
+
+# (3) Médias amostrais para n = 30 e n = 200
+medias_n30  <- simular_medias(30)
+medias_n200 <- simular_medias(200)
+
+# (4) Histogramas comparativos
+par(mfrow = c(2, 1))
+hist(medias_n30,  main = "Médias amostrais de renda (n = 30)",
+     xlab = "Média da renda", col = "lightblue", border = "white")
+hist(medias_n200, main = "Médias amostrais de renda (n = 200)",
+     xlab = "Média da renda", col = "lightgreen", border = "white")
+par(mfrow = c(1, 1))
+```
+Interpretação:  
+A população tem distribuição assimétrica (Gamma), mas ao calcular médias amostrais, a distribuição se aproxima da Normal.
+
+Para n = 30, o histograma já mostra uma forma quase normal, embora ainda com alguma variabilidade.
+
+Para n = 200, a distribuição das médias é ainda mais concentrada e simétrica, ilustrando claramente o Teorema Central do Limite.
+
+Em termos de políticas públicas, isso mostra que mesmo variáveis de renda muito assimétricas podem gerar estimativas confiáveis quando usamos amostras suficientemente grandes.
+
+# ============================================================
+# Exercício 7 - Intervalo de confiança para proporção (saúde)
+# ============================================================
+
+```{r}
+set.seed(123)
+
+# (1) Recriar base dados_saude, se necessário
+N <- 5000
+dados_saude <- data.frame(
+  sexo       = sample(c("F", "M"), size = N, replace = TRUE, prob = c(0.55, 0.45)),
+  fumante    = rbinom(N, 1, 0.22),
+  hipertenso = rbinom(N, 1, 0.30)
+)
+
+# (2) Sorteio de amostra de tamanho n = 400
+n <- 400
+amostra_saude <- dados_saude[sample(1:nrow(dados_saude), n), ]
+
+# Proporção amostral de hipertensos
+p_hat <- mean(amostra_saude$hipertenso)
+
+# Erro-padrão aproximado
+SE_p <- sqrt(p_hat * (1 - p_hat) / n)
+
+# Intervalo de confiança de 95%
+IC_95 <- c(
+  inferior = p_hat - 1.96 * SE_p,
+  superior = p_hat + 1.96 * SE_p
+)
+
+# Proporção verdadeira na população
+p_verdadeiro <- mean(dados_saude$hipertenso)
+
+# Resultados
+cat("Proporção amostral:", p_hat, "\n")
+cat("Erro-padrão:", SE_p, "\n")
+cat("IC 95%:", IC_95, "\n")
+cat("Proporção verdadeira:", p_verdadeiro, "\n")
+```
+Interpretação:  
+A proporção amostral de hipertensos foi de 33%, com erro-padrão de aproximadamente 2,35%.
+O intervalo de confiança de 95% ficou entre 28,39% e 37,61%, e inclui a proporção verdadeira da população (30,14%).
+
+Isso mostra que a amostra foi representativa e que o intervalo de confiança é uma ferramenta confiável para estimar proporções populacionais.
+Em políticas públicas, esse tipo de análise permite decisões baseadas em dados mesmo sem acesso à população completa.
+
+
+# ============================================================
+# Exercício 8 - Correlação, regressão simples e inferência (educação)
+# ============================================================
+
+```{r}
+set.seed(123)
+N <- 2000
+
+# (1) Simular base de educação
+dados_educacao <- data.frame(
+  ideb        = rnorm(N, mean = 5.5, sd = 0.7),
+  gasto_aluno = rnorm(N, mean = 6000, sd = 1500)
+)
+
+# Introduzir correlação positiva leve
+dados_educacao$ideb <- dados_educacao$ideb +
+  0.0002 * (dados_educacao$gasto_aluno - 6000)
+
+# (2) Correlação de Pearson
+cor_ideb_gasto <- cor(dados_educacao$ideb, dados_educacao$gasto_aluno)
+cat("Correlação de Pearson:", cor_ideb_gasto, "\n")
+
+# (3) Regressão simples
+modelo <- lm(ideb ~ gasto_aluno, data = dados_educacao)
+summary(modelo)
+
+# Intervalo de confiança para o coeficiente angular
+confint(modelo)
+```
+Interpretação:
+
+A correlação de Pearson (~0.38) indica uma associação positiva moderada: escolas com maior gasto por aluno tendem a ter IDEB mais alto.
+
+Na regressão, o coeficiente angular foi positivo (~0.00019), mostrando que cada aumento de R$ 1.000 no gasto por aluno está associado a um acréscimo médio de ~0.19 pontos no IDEB.
+
+O valor-p (< 0.001) confirma significância estatística, e o intervalo de confiança (0.00017 a 0.00021) não inclui zero, reforçando a evidência de relação positiva.
+
+Do ponto de vista inferencial, um coeficiente diferente de zero sugere que há indícios reais de associação entre gasto e qualidade, ainda que o efeito seja relativamente pequeno.
+
+# ============================================================
+# Exercício 9 - Margem de erro e tamanho amostral (TSE)
+# ============================================================
+
+```{r}
+set.seed(123)
+N <- 5000
+
+# (1) População de municípios com proporção verdadeira de votos
+dados_tse <- data.frame(
+  id_mun       = 1:N,
+  prop_partido = rbeta(N, shape1 = 10, shape2 = 15)
+)
+
+n_amostra <- 600
+n_rep     <- 1000
+
+# (2 e 3) Simulação de pesquisas eleitorais
+p_hat_vec <- numeric(n_rep)
+for (r in 1:n_rep) {
+  id_escolhido <- sample(dados_tse$id_mun, 1)
+  p_mun <- dados_tse$prop_partido[dados_tse$id_mun == id_escolhido]
+  
+  votos <- rbinom(n_amostra, size = 1, prob = p_mun)
+  p_hat_vec[r] <- mean(votos)
+}
+
+# (4) Margem de erro "de praxe" (pior caso)
+ME <- 1.96 * sqrt(0.25 / n_amostra)
+cat("Margem de erro aproximada (pior caso):", ME, "\n")
+
+# (5) Histograma das proporções simuladas
+hist(p_hat_vec, main = "Distribuição das proporções amostrais (n = 600)",
+     xlab = "Proporção de votos no partido X", col = "lightblue", border = "white")
+```
+Interpretação:
+
+A margem de erro padrão para n = 600 é de aproximadamente ±4%.
+
+O histograma das proporções amostrais mostra que a variabilidade real depende da proporção verdadeira de cada município.
+
+Algumas amostras têm erro menor, outras maior.
+
+Isso evidencia que a margem de erro "de praxe" é uma simplificação útil, mas não captura toda a complexidade da amostragem.
+Em pesquisas eleitorais, é importante considerar que a margem de erro pode variar conforme o contexto e a distribuição real dos votos.
+
+# ============================================================
+# Exercício 10 - Regressão e distribuição amostral do coeficiente (TSE)
+# ============================================================
+
+```{r}
+set.seed(123)
+N <- 5000
+
+# (1) Variável socioeconômica
+dados_tse <- data.frame(
+  id_mun      = 1:N,
+  renda_media = rnorm(N, mean = 2500, sd = 600)
+)
+
+# (2) Probabilidade de voto no partido X dependente de renda_media
+dados_tse$prop_partido <- plogis(-1 + 0.0006 * dados_tse$renda_media + rnorm(N, 0, 0.3))
+
+n_mun_amostra <- 300
+n_eleitores   <- 400
+n_rep         <- 500
+
+coef_angular <- numeric(n_rep)
+
+for (r in 1:n_rep) {
+  # (4) Sortear municípios
+  mun_sorteados <- sample(dados_tse$id_mun, n_mun_amostra)
+  base_pesq <- dados_tse[dados_tse$id_mun %in% mun_sorteados, ]
+  
+  # Simular votos e calcular proporção p_hat
+  p_hat <- numeric(n_mun_amostra)
+  for (i in seq_len(n_mun_amostra)) {
+    p_true <- base_pesq$prop_partido[i]
+    votos  <- rbinom(n_eleitores, size = 1, prob = p_true)
+    p_hat[i] <- mean(votos)
+  }
+  
+  base_pesq$p_hat <- p_hat
+  
+  # (5) Ajustar regressão simples
+  modelo <- lm(p_hat ~ renda_media, data = base_pesq)
+  coef_angular[r] <- coef(modelo)[2]
+}
+
+# (7) Histograma da distribuição dos coeficientes angulares
+hist(coef_angular, main = "Distribuição amostral do coeficiente angular",
+     xlab = "Coeficiente angular (beta)", col = "lightblue", border = "white")
+
+# Estatísticas da distribuição
+cat("Média dos coeficientes:", mean(coef_angular), "\n")
+cat("Desvio padrão dos coeficientes:", sd(coef_angular), "\n")
+```
+Interpretação:
+
+O histograma mostra a distribuição amostral do coeficiente angular da regressão p_hat ~ renda_media, obtido em 500 simulações.
+
+A média dos coeficientes (~0.00013) está próxima do valor verdadeiro, indicando que o estimador é não-viesado.
+
+O desvio padrão (~6.67e-06) representa o erro-padrão do estimador, ou seja, a variabilidade esperada entre diferentes amostras.
+
+Essa distribuição amostral é a base para construir intervalos de confiança: embora cada amostra produza um coeficiente ligeiramente diferente, a maioria dos valores se concentra em torno da média.
+
+Isso reforça a ideia de que estimativas amostrais são confiáveis quando baseadas em boas práticas de amostragem e modelagem.
